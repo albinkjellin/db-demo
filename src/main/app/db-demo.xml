@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:avalara="http://www.mulesoft.org/schema/mule/avalara" xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:jdbc-ee="http://www.mulesoft.org/schema/mule/ee/jdbc"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.3.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd 
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/jdbc http://www.mulesoft.org/schema/mule/ee/jdbc/current/mule-jdbc-ee.xsd 
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd 
+http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd 
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd 
+http://www.mulesoft.org/schema/mule/avalara http://www.mulesoft.org/schema/mule/avalara/2.0/mule-avalara.xsd 
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd 
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd ">
+	<jdbc-ee:mysql-data-source name="MySQL_Data_Source"
+		user="root" password="mule" url="jdbc:mysql://localhost:3306/test"
+		transactionIsolation="UNSPECIFIED" doc:name="MySQL Data Source" />
+	<jdbc-ee:connector name="Database" dataSource-ref="MySQL_Data_Source"
+		validateConnections="true" queryTimeout="-1" pollingFrequency="0"
+		doc:name="Database" />
+    <avalara:config name="Avalara" doc:name="Avalara"/>
+    <sfdc:config name="Salesforce" username="albin.kjellin@gmail.com" password="1MuleFTW" securityToken="NvCsTRvKdviQfL0OXrqrZYxRE" doc:name="Salesforce"/>
+    <data-mapper:config name="CreateContact" transformationGraphPath="createcontact.grf" doc:name="CreateContact"/>
+	<flow name="RetrieveFromDB" doc:name="RetrieveFromDB">
+		<http:inbound-endpoint exchange-pattern="request-response"
+			host="localhost" port="8881" path="trigger" doc:name="HTTP" />
+		<jdbc-ee:outbound-endpoint exchange-pattern="request-response"
+			queryKey="getAllPersons" queryTimeout="-1" connector-ref="Database"
+			doc:name="Database">
+			<jdbc-ee:query key="getAllPersons" value="select * from person" />
+		</jdbc-ee:outbound-endpoint>
+		<logger message="Result from DB Query" level="INFO" doc:name="Logger" />
+
+		<async doc:name="Async">
+			<vm:outbound-endpoint exchange-pattern="one-way"
+				path="splitter" doc:name="send.to.splitter" />
+		</async>
+
+		<json:object-to-json-transformer
+			doc:name="Object to JSON" />
+		<object-to-string-transformer doc:name="Object to String" />
+	</flow>
+	<flow name="ValidateAndUpdateSFDC" doc:name="ValidateAndUpdateSFDC">
+		<vm:inbound-endpoint exchange-pattern="one-way"
+			path="splitter" doc:name="splitter" />
+        <logger message="Before Splitter #[payload]" level="INFO" doc:name="Logger"/>
+		<collection-splitter doc:name="Collection Splitter" />
+        <logger message="After Splitter #[payload]" level="INFO" doc:name="Logger"/>
+		<choice doc:name="Choice">
+			<when expression="#[payload.age &gt; 31]">
+				<processor-chain>
+					<logger message="Age over 31" level="INFO" doc:name="Logger" />
+                    <enricher doc:name="Message Enricher">
+                        <avalara:validate-address config-ref="Avalara" account="1100068440" avalaraClient="doesnotmatter" city="#[payload.city]" country="#[payload.country]" license="0FB02FADB01DE0E5" line1="#[payload.address]" postalCode="#[payload.postalcode]" taxRegionId="1" date-ref="#[javax.xml.datatype.DatatypeFactory.newInstance().newXMLGregorianCalendar(new GregorianCalendar() )]" doc:name="Validate Address"/>
+                        <enrich source="#[payload.resultCode.value()]" target="#[variable:isAddressValid]"/>
+                    </enricher>
+                    <logger message="Is Address Valid #[isAddressValid]" level="INFO" doc:name="Print Validation Result"/>
+                    <data-mapper:transform config-ref="CreateContact" doc:name="DataMapper">
+                        <data-mapper:input-arguments>
+                            <data-mapper:input-argument key="isAddressValid">#[isAddressValid]</data-mapper:input-argument>
+                        </data-mapper:input-arguments>
+                    </data-mapper:transform>
+                    <logger message="Payload after Data Loader #[payload]" level="INFO" doc:name="Logger"/>
+                    <sfdc:create config-ref="Salesforce" type="Contact" doc:name="Salesforce">
+                        <sfdc:objects ref="#[payload]"/>
+                    </sfdc:create>
+                    <logger message="Result from SalesForce #[payload]" level="INFO" doc:name="Logger"/>
+				</processor-chain>
+			</when>
+			<otherwise>
+				<processor-chain>
+					<logger message="Age under 31" level="INFO" doc:name="Logger" />
+				</processor-chain>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
