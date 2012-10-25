@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Graph author="albin" created="Thu Oct 25 09:36:14 PDT 2012" guiVersion="3.3.0.M2" id="1351199850915" licenseCode="Unlicensed" licenseType="Commercial" modified="Thu Oct 25 09:36:14 PDT 2012" modifiedBy="albin" name="CreateContact" revision="1.0" showComponentDetails="false">
+<Global>
+<Metadata __sourcePath="{}/outputMetadata" _dataStructure="SINGLE_DIMENSIONAL_COLLECTION" _id="__id" _type="Input" id="b5e0c7ac-8709-40c3-826e-0b87e9c1b4da">
+<Record fieldDelimiter="|" label="outputMetadata" name="outputMetadata" recordDelimiter="&#10;" type="delimited">
+<Field __artificialType="_id" __systemManaged="true" name="__id" type="string"/>
+<Field __sourcePath="{}/outputMetadata/firstname" label="firstname" name="firstname" type="string"/>
+<Field __sourcePath="{}/outputMetadata/lastname" label="lastname" name="lastname" type="string"/>
+<Field __sourcePath="{}/outputMetadata/age" label="age" name="age" type="string"/>
+<Field __sourcePath="{}/outputMetadata/address" label="address" name="address" type="string"/>
+<Field __sourcePath="{}/outputMetadata/city" label="city" name="city" type="string"/>
+<Field __sourcePath="{}/outputMetadata/postalcode" label="postalcode" name="postalcode" type="string"/>
+<Field __sourcePath="{}/outputMetadata/country" label="country" name="country" type="string"/>
+</Record>
+</Metadata>
+<Metadata __sourcePath="{}/outputMetadata" _dataStructure="SINGLE_DIMENSIONAL_COLLECTION" _id="__id" _type="Output" id="27ec0195-3139-45af-9d50-34eab644852c">
+<Record fieldDelimiter="|" label="outputMetadata" name="outputMetadata" recordDelimiter="&#10;" type="delimited">
+<Field __artificialType="_id" __systemManaged="true" name="__id" type="string"/>
+<Field __sourcePath="{}/outputMetadata/LastName" label="LastName" name="LastName" type="string"/>
+<Field __sourcePath="{}/outputMetadata/MailingCity" label="MailingCity" name="MailingCity" type="string"/>
+<Field __sourcePath="{}/outputMetadata/MailingCountry" label="MailingCountry" name="MailingCountry" type="string"/>
+<Field __sourcePath="{}/outputMetadata/MailingPostalCode" label="MailingPostalCode" name="MailingPostalCode" type="string"/>
+<Field __sourcePath="{}/outputMetadata/MailingStreet" label="MailingStreet" name="MailingStreet" type="string"/>
+<Field __sourcePath="{}/outputMetadata/FirstName" label="FirstName" name="FirstName" type="string"/>
+<Field __sourcePath="{=}/outputMetadata/wdemployeeid__c" label="wdemployeeid__c" name="wdemployeeid__c" type="string"/>
+<Field __sourcePath="{=}/outputMetadata/Description" containerType="" label="Description" name="Description" type="string"/>
+</Record>
+</Metadata>
+<Dictionary>
+<Entry id="DictionaryEntry0" input="true" name="inputPayload" output="false" type="object"/>
+<Entry id="DictionaryEntry1" input="false" name="outputPayload" output="true" type="object"/>
+<Entry id="DictionaryEntry2" input="true" name="isAddressValid" output="false" type="string"/>
+</Dictionary>
+</Global>
+<Phase number="0">
+<Node enabled="enabled" fileURL="dict:inputPayload" guiHeight="0" guiName="Maps / List of Maps  READER" guiWidth="0" guiX="20" guiY="20" id="BEAN_READER0" type="BEAN_READER">
+<attr name="mapping"><![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Context outPort="0" sequenceField="__id" xpath=".">
+  <Mapping cloverField="firstname" trim="true" xpath="firstname"/>
+  <Mapping cloverField="lastname" trim="true" xpath="lastname"/>
+  <Mapping cloverField="age" trim="true" xpath="age"/>
+  <Mapping cloverField="address" trim="true" xpath="address"/>
+  <Mapping cloverField="city" trim="true" xpath="city"/>
+  <Mapping cloverField="postalcode" trim="true" xpath="postalcode"/>
+  <Mapping cloverField="country" trim="true" xpath="country"/>
+</Context>
+]]></attr>
+<attr name="_data_format"><![CDATA[MAP]]></attr>
+</Node>
+<Node enabled="enabled" fileURL="dict:outputPayload" guiHeight="0" guiName="Maps / List of Maps  WRITER" guiWidth="0" guiX="900" guiY="20" id="MAP_WRITER0" type="MAP_WRITER">
+<attr name="mapping"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<clover:collection clover:name="outputMetadata" xmlns:clover="http://www.cloveretl.com/ns/xmlmapping">
+  <item clover:inPort="0">
+    <LastName>$0.LastName</LastName>
+    <MailingCity>$0.MailingCity</MailingCity>
+    <MailingCountry>$0.MailingCountry</MailingCountry>
+    <MailingPostalCode>$0.MailingPostalCode</MailingPostalCode>
+    <MailingStreet>$0.MailingStreet</MailingStreet>
+    <FirstName>$0.FirstName</FirstName>
+    <wdemployeeid_x005f_x005fc>$0.wdemployeeid__c</wdemployeeid_x005f_x005fc>
+    <Description>$0.Description</Description>
+  </item>
+</clover:collection>]]></attr>
+<attr name="_data_format"><![CDATA[MAP]]></attr>
+</Node>
+<Node enabled="enabled" guiHeight="0" guiName="outputMetadata_to_outputMetadata" guiWidth="0" guiX="460" guiY="20" id="REFORMAT0" type="REFORMAT">
+<attr name="transform"><![CDATA[//#CTL2
+
+// Transforms input record into output record.
+function integer transform() {
+	$out.0.Description = 'The address validation was a '+dictionary.isAddressValid;
+	$out.0.wdemployeeid__c = 'abc';
+	$out.0.MailingCountry = $in.0.country;
+	$out.0.MailingPostalCode = $in.0.postalcode;
+	$out.0.MailingCity = $in.0.city;
+	$out.0.MailingStreet = $in.0.address;
+	$out.0.LastName = $in.0.lastname;
+	$out.0.FirstName = $in.0.firstname;
+$out.0.__id=$in.0.__id;
+		return ALL;
+}
+
+// Called during component initialization.
+// function boolean init() {}
+
+// Called during each graph run before the transform is executed. May be used to allocate and initialize resources
+// required by the transform. All resources allocated within this method should be released
+// by the postExecute() method.
+// function void preExecute() {}
+
+// Called only if transform() throws an exception.
+// function integer transformOnError(string errorMessage, string stackTrace) {}
+
+// Called during each graph run after the entire transform was executed. Should be used to free any resources
+// allocated within the preExecute() method.
+// function void postExecute() {}
+
+// Called to return a user-defined error message when an error occurs.
+// function string getMessage() {}
+]]></attr>
+</Node>
+<Edge debugMode="true" fromNode="BEAN_READER0:0" guiBendpoints="" id="Edge0" inPort="Port 0 (in)" metadata="b5e0c7ac-8709-40c3-826e-0b87e9c1b4da" outPort="Port 0 (out)" toNode="REFORMAT0:0"/>
+<Edge debugMode="true" fromNode="REFORMAT0:0" guiBendpoints="" id="Edge1" inPort="Port 0 (in)" metadata="27ec0195-3139-45af-9d50-34eab644852c" outPort="Port 0 (out)" toNode="MAP_WRITER0:0"/>
+</Phase>
+</Graph>
